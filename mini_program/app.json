@@ -1,0 +1,10 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#4F7CFF",
+    "navigationBarTitleText": "吉吉朋友圈文案",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F2F4FB"
+  }
+}

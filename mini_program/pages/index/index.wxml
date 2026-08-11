@@ -1,0 +1,125 @@
+<view class="page">
+
+  <!-- 顶部渐变 Header -->
+  <view class="hero">
+    <view class="hero-bg"></view>
+    <view class="hero-content">
+      <view class="hero-icon">✨</view>
+      <view class="hero-title">吉吉朋友圈文案</view>
+      <view class="hero-sub">一键生成 · 让朋友圈更有料</view>
+    </view>
+    <view class="hero-badge">
+      <text class="badge-num">{{todayCount}}</text>
+      <text class="badge-label">今日已生成</text>
+    </view>
+  </view>
+
+  <!-- 配置区 -->
+  <view class="card">
+    <view class="card-head">
+      <text class="card-title">配置参数</text>
+    </view>
+
+    <!-- 场景 -->
+    <view class="cfg-row">
+      <text class="cfg-label">使用场景</text>
+      <picker bindchange="changeScene" value="{{sceneIdx}}" range="{{sceneList}}">
+        <view class="cfg-pill">
+          <text class="cfg-pill-text">{{sceneList[sceneIdx]}}</text>
+          <text class="cfg-pill-arrow">▾</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 风格 -->
+    <view class="cfg-row">
+      <text class="cfg-label">文案风格</text>
+      <picker bindchange="changeStyle" value="{{styleIdx}}" range="{{styleList}}">
+        <view class="cfg-pill">
+          <text class="cfg-pill-text">{{styleList[styleIdx]}}</text>
+          <text class="cfg-pill-arrow">▾</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 字数 -->
+    <view class="cfg-row">
+      <text class="cfg-label">字数上限</text>
+      <picker bindchange="changeLen" value="{{lenIdx}}" range="{{lenList}}">
+        <view class="cfg-pill">
+          <text class="cfg-pill-text">{{lenList[lenIdx]}} 字</text>
+          <text class="cfg-pill-arrow">▾</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 输入区 -->
+  <view class="card">
+    <view class="card-head">
+      <text class="card-title">描述需求</text>
+      <text class="card-clear" bindtap="clearAll" wx:if="{{require || result}}">清空</text>
+    </view>
+    <textarea
+      class="input-area"
+      placeholder="例如：写一条测评夏天小白鞋的小红书文案"
+      placeholder-class="input-ph"
+      bindinput="inputReq"
+      value="{{require}}"
+      auto-height
+      maxlength="-1"
+    />
+  </view>
+
+  <!-- 生成按钮 -->
+  <view class="btn-gen-wrap">
+    <view class="btn-gen {{loading ? 'loading' : ''}}" bindtap="{{loading ? '' : 'generate'}}">
+      <view class="btn-gen-spinner" wx:if="{{loading}}"></view>
+      <text class="btn-gen-text">{{loading ? 'AI 生成中...' : '🚀 一键生成文案'}}</text>
+    </view>
+  </view>
+
+  <!-- 结果区 -->
+  <view class="card result-card" wx:if="{{result}}">
+    <view class="card-head">
+      <text class="card-title">生成结果</text>
+      <text class="result-count">{{result.length}} 字</text>
+    </view>
+    <view class="result-text">{{result}}</view>
+
+    <view class="action-row">
+      <view class="action-btn" bindtap="copy">
+        <text class="action-icon">📋</text>
+        <text class="action-label">复制</text>
+      </view>
+      <view class="action-btn" bindtap="saveToHistory">
+        <text class="action-icon">⭐</text>
+        <text class="action-label">收藏</text>
+      </view>
+      <view class="action-btn" bindtap="sendQQ">
+        <text class="action-icon">💬</text>
+        <text class="action-label">推QQ</text>
+      </view>
+      <view class="action-btn" bindtap="setTimer">
+        <text class="action-icon">⏰</text>
+        <text class="action-label">定时</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 历史记录 -->
+  <view class="card history-card" wx:if="{{historyList.length > 0}}">
+    <view class="card-head">
+      <text class="card-title">历史记录</text>
+      <text class="card-clear" bindtap="clearHistory">清空</text>
+    </view>
+    <view class="history-list">
+      <view class="history-item" bindtap="useHistory" data-text="{{item}}" wx:for="{{historyList}}" wx:key="index">
+        <text class="history-text">{{item}}</text>
+        <text class="history-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>
