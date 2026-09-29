@@ -12,9 +12,11 @@ def load_sensitive_words():
                     words.add(w)
     return words
 
+# 模块加载时缓存敏感词，避免每次请求读盘
+_SENSITIVE_WORDS = load_sensitive_words()
+
 def filter_text(text: str) -> tuple[bool, str]:
-    sensitive = load_sensitive_words()
-    for word in sensitive:
+    for word in _SENSITIVE_WORDS:
         if word in text:
             return True, f"内容包含敏感词汇：{word}，已拦截"
     return False, text

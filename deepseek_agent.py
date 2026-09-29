@@ -53,8 +53,12 @@ class CopyAgent:
         }
         url = f"{self.base_url}/chat/completions"
         resp = requests.post(url, headers=self.headers, json=payload, timeout=60)
+        resp.raise_for_status()
         res_data = resp.json()
-        return res_data["choices"][0]["message"]["content"].strip()
+        choices = res_data.get("choices") or []
+        if not choices:
+            raise RuntimeError("模型返回为空，请检查模型配置")
+        return choices[0]["message"]["content"].strip()
 
 
 agent = CopyAgent()

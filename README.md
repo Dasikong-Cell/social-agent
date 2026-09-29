@@ -152,3 +152,16 @@ curl -X POST http://127.0.0.1:8000/api/generate \
 ## 📜 License
 
 MIT License
+
+## 安全与部署
+
+本仓库已落实若干生产就绪与安全防护：
+
+- **默认仅本机监听**：`app.run` 默认 `BIND_HOST=127.0.0.1`；暴露到局域网/公网须设 `0.0.0.0` 并配置 `SERVER_API_KEY`。
+- **敏感端点鉴权**：`/api/send_qq`、`/api/task`（向 QQ 频道推送/定时发布）在设置 `SERVER_API_KEY` 后必须带 `X-API-Key` 头，避免他人滥用你的付费 LLM 配额与频道。
+- **生成限流**：`/api/generate` 内置内存令牌桶（默认 60s 20 次），防止接口被刷。
+- **不泄露异常**：生成失败只返回通用提示，原始异常仅记录在服务端日志。
+- **外部调用超时**：QQ / 大模型请求均带 `timeout`，避免线程长期挂起。
+- **配置外置**：`SERVER_PORT`、`AI_PROVIDER`、模型与 `QQ_TARGET_CHANNEL_ID` 等均经 `.env` 注入（见 `.env.example`）。
+- **可观测**：`/api/health` 供探活；`.github/workflows/ci.yml` 做语法编译检查。
+- **小程序**：`mini_program/config.js` 的 `BASE_URL` 默认 https，生产请改为你的域名并在微信后台配置合法域名。

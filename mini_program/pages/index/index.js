@@ -1,4 +1,5 @@
 ﻿const app = getApp()
+const { BASE_URL } = require('../../config.js')
 Page({
   data: {
     sceneList: ["朋友圈", "小红书", "短视频标题", "通知公告", "节日祝福"],
@@ -31,7 +32,7 @@ Page({
   getTodayCount() {
     const that = this
     wx.request({
-      url: "http://10.10.27.62:8000/api/count",
+      url: BASE_URL + "/api/count",
       success(res) {
         that.setData({ todayCount: res.data.todayCount })
       }
@@ -59,7 +60,7 @@ Page({
     }
     that.setData({ loading: true })
     wx.request({
-      url: "http://10.10.27.62:8000/api/generate",
+      url: BASE_URL + "/api/generate",
       method: "POST",
       data: {
         scene: that.data.sceneList[that.data.sceneIdx],
@@ -108,7 +109,7 @@ Page({
 
   sendQQ() {
     wx.request({
-      url: "http://10.10.27.62:8000/api/send_qq",
+      url: BASE_URL + "/api/send_qq",
       method: "POST",
       data: { content: this.data.result },
       success() {
@@ -125,7 +126,7 @@ Page({
       success: res => {
         if (res.confirm && res.content) {
           wx.request({
-            url: "http://10.10.27.62:8000/api/task",
+            url: BASE_URL + "/api/task",
             method: "POST",
             data: { time: res.content, content: this.data.result },
             success() {

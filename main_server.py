@@ -1,4 +1,7 @@
 import os
+import functools
+import threading
+import time
 from flask import Flask, request, jsonify
 from deepseek_agent import agent
 from qq_bot_service import send_to_qq_channel
@@ -10,7 +13,33 @@ from utils.count_utils import add_count, get_today_count
 
 load_dotenv()
 app = Flask(__name__)
-PORT = int(os.getenv("SERVER_PORT"))
+PORT = int(os.getenv("SERVER_PORT", "8000"))
+
+# 简单内存速率限制（令牌桶），防付费 LLM 接口被刷；生产可用 redis/flask-limiter 替代。
+_GEN_LOCK = threading.Lock()
+_GEN_HITS: dict = {}
+
+def rate_limit(key: str, limit: int, window: int = 60) -> bool:
+    now = time.time()
+    with _GEN_LOCK:
+        hits = _GEN_HITS.get(key, [])
+        hits = [t for t in hits if now - t < window]
+        if len(hits) >= limit:
+            return False
+        hits.append(now)
+        _GEN_HITS[key] = hits
+    return True
+
+# 服务端 API Key：留空则不强制（便于本机调试）；一旦设置，副作用/外部推送端点必须带 X-API-Key。
+API_KEY = os.getenv("SERVER_API_KEY", "")
+
+def require_api_key(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if API_KEY and request.headers.get("X-API-Key") != API_KEY:
+            return jsonify({"code": -401, "msg": "未授权"}), 401
+        return fn(*args, **kwargs)
+    return wrapper
 
 WEB_UI = """<!DOCTYPE html>
 <html lang="zh-CN">
@@ -129,13 +158,25 @@ document.getElementById('require').addEventListener('keydown',e=>{if(e.key==='En
 def index():
     return WEB_UI
 
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    return jsonify({"status": "ok"})
+
 @app.route("/api/generate", methods=["POST"])
 def api_generate():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     scene = data.get("scene", "朋友圈")
     style = data.get("style", "简约")
-    req = data.get("require", "")
-    max_len = int(data.get("maxLen", 200))
+    req = str(data.get("require", "") or "")
+    try:
+        max_len = int(data.get("maxLen", 200) or 200)
+    except (TypeError, ValueError):
+        max_len = 200
+    max_len = max(1, min(max_len, 2000))  # 防超长输出放大 LLM 调用成本
+
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if not rate_limit(f"gen:{client_ip}", limit=20, window=60):
+        return jsonify({"code": -429, "msg": "请求过于频繁，请稍后再试"})
 
     if not req.strip():
         return jsonify({"code": -1, "msg": "请输入文案需求"})
@@ -158,13 +199,15 @@ def api_generate():
             "todayCount": today_num
         })
     except Exception as e:
-        err_msg = str(e)
-        write_log(f"生成异常：{err_msg}")
-        return jsonify({"code": -2, "msg": f"生成失败：{err_msg}"})
+        write_log(f"生成异常：{str(e)}")
+        # 不向客户端泄露原始异常细节
+        return jsonify({"code": -2, "msg": "生成失败，请稍后重试"})
 
 @app.route("/api/send_qq", methods=["POST"])
+@require_api_key
 def api_send_qq():
-    text = request.get_json().get("content", "")
+    data = request.get_json(silent=True) or {}
+    text = str(data.get("content", "") or "")
     if not text:
         return jsonify({"code": -1, "msg": "文案为空"})
     res = send_to_qq_channel(text)
@@ -174,10 +217,11 @@ def api_send_qq():
         return jsonify({"code": -3, "msg": "QQ推送接口异常"})
 
 @app.route("/api/task", methods=["POST"])
+@require_api_key
 def api_task():
-    d = request.get_json()
-    t = d.get("time")
-    c = d.get("content")
+    data = request.get_json(silent=True) or {}
+    t = data.get("time")
+    c = data.get("content")
     res = add_timed_task(t, c)
     if res:
         return jsonify({"code": 0, "msg": f"已设置定时 {t} 发布"})
@@ -192,6 +236,8 @@ def get_count():
 if __name__ == "__main__":
     write_log("===== 服务启动 =====")
     print("=== DeepSeek文案Agent桌面服务已启动 ===")
-    print(f"本地地址：http://127.0.0.1:{PORT}")
+    bind_host = os.getenv("BIND_HOST", "127.0.0.1")
+    print(f"本地地址：http://{bind_host}:{PORT}")
     print("关闭当前窗口即可停止服务")
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    # 默认仅监听本机；如需局域网/公网访问，设置 BIND_HOST=0.0.0.0 并务必配置 SERVER_API_KEY。
+    app.run(host=bind_host, port=PORT, debug=False)

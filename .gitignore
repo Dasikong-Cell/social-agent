@@ -39,3 +39,6 @@ Thumbs.db
 
 # ============ 依赖产物 ============
 node_modules/
+
+# 内部推送暂存（Git Data API 工具产物，勿入库）
+_push2/

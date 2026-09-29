@@ -13,8 +13,9 @@ TARGET_CHANNEL = os.getenv("QQ_TARGET_CHANNEL_ID")
 def get_qq_token():
     url = f"{QQ_API}/app/getAppAccessToken"
     data = {"app_id": QQ_APPID, "client_secret": QQ_SECRET}
-    r = requests.post(url, json=data)
-    return r.json()["access_token"]
+    r = requests.post(url, json=data, timeout=10)
+    r.raise_for_status()
+    return r.json().get("access_token")
 
 def send_to_qq_channel(content: str):
     try:
@@ -22,7 +23,7 @@ def send_to_qq_channel(content: str):
         headers = {"Authorization": f"Bearer {token}"}
         url = f"{QQ_API}/channels/{TARGET_CHANNEL}/messages"
         body = {"content": content}
-        requests.post(url, headers=headers, json=body)
+        requests.post(url, headers=headers, json=body, timeout=10)
         write_log(f"成功推送文案到QQ频道，内容：{content[:50]}...")
         return True
     except Exception as e:
